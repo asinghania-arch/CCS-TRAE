@@ -1,0 +1,17 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Archives
+*.zip
+*.rar
+*.tar
+*.gz
+
+# Node modules (if we add npm later)
+node_modules/
+npm-debug.log
+
+# IDE files
+.vscode/
+.idea/
