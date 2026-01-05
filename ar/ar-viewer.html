@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Viewer</title>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    body { margin: 0; background: #000; color: #fff; font-family: system-ui, Inter; }
+    header { padding: 16px; border-bottom: 1px solid #222; background: rgba(0,0,0,0.7); }
+    .container { padding: 16px; }
+    .info { color: #888; margin-bottom: 8px; }
+    model-viewer { width: 100vw; height: 80vh; background: #000; }
+    .controls { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+    .btn { padding: 10px 14px; border: 1px solid #444; background: #111; color: #fff; cursor: pointer; }
+    .btn:hover { border-color: #888; }
+    input, select { padding: 8px; background: #111; color: #fff; border: 1px solid #444; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>AR Viewer</strong>
+  </header>
+  <div class="container">
+    <div class="info">Supports Android (Scene Viewer) and iOS (Quick Look) when provided a USDZ.</div>
+    <model-viewer id="mv"
+      ar
+      ar-modes="scene-viewer quick-look webxr"
+      camera-controls
+      exposure="0.9"
+      shadow-intensity="1"
+      environment-image="neutral"
+      autoplay>
+      <button slot="ar-button" class="btn">View in AR</button>
+    </model-viewer>
+    <div class="controls">
+      <label>Model URL</label>
+      <input id="modelUrlInput" type="url" placeholder="https://host/path/model.glb" size="40">
+      <label>iOS USDZ</label>
+      <input id="iosUrlInput" type="url" placeholder="https://host/path/model.usdz" size="40">
+      <button id="applyBtn" class="btn">Apply</button>
+    </div>
+  </div>
+  <script>
+    const mv = document.getElementById('mv');
+    const qs = new URLSearchParams(window.location.search);
+    const model = qs.get('model');
+    const ios = qs.get('ios');
+    if (model) mv.src = model;
+    if (ios) mv.iosSrc = ios;
+    document.getElementById('modelUrlInput').value = model || '';
+    document.getElementById('iosUrlInput').value = ios || '';
+    document.getElementById('applyBtn').addEventListener('click', () => {
+      const m = document.getElementById('modelUrlInput').value.trim();
+      const i = document.getElementById('iosUrlInput').value.trim();
+      if (m) mv.src = m;
+      mv.iosSrc = i || null;
+      const next = new URL(window.location.href);
+      const p = new URLSearchParams(next.search);
+      if (m) p.set('model', m); else p.delete('model');
+      if (i) p.set('ios', i); else p.delete('ios');
+      next.search = p.toString();
+      history.replaceState(null, '', next.toString());
+    });
+  </script>
+</body>
+</html>
+

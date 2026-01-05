@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Uploader & QR</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <style>
+    body { margin: 0; background: #000; color: #fff; font-family: system-ui, Inter; }
+    header { padding: 16px; border-bottom: 1px solid #222; background: rgba(0,0,0,0.7); }
+    .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .panel { border: 1px solid #222; padding: 12px; background: #0e0e0e; }
+    input[type="file"] { padding: 8px; background: #111; color: #fff; border: 1px solid #444; width: 100%; }
+    .btn { padding: 10px 14px; border: 1px solid #444; background: #111; color: #fff; cursor: pointer; }
+    .btn:hover { border-color: #888; }
+    .info { color: #888; font-size: 14px; }
+    canvas { background: #fff; border-radius: 8px; }
+    .link { margin-top: 8px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <header><strong>AR Uploader & QR</strong></header>
+  <div class="container">
+    <p class="info">Upload a GLB/GLTF for Android (Scene Viewer). Optionally add a USDZ for iOS Quick Look. We host uploads locally and generate a QR to open the AR viewer page on your phone.</p>
+    <div class="row">
+      <div class="panel">
+        <h3>Upload Model</h3>
+        <div class="info" style="margin-bottom:8px;">If this page is opened on <strong>127.0.0.1</strong>, enter your computer’s LAN IP (e.g. 192.168.x.x) so your phone can connect.</div>
+        <label>Server LAN IP</label>
+        <input id="serverHost" type="text" placeholder="192.168.1.19" />
+        <form id="uploadForm">
+          <label>GLB/GLTF</label>
+          <input type="file" id="modelFile" accept=".glb,.gltf" required>
+          <label style="margin-top:8px; display:block;">USDZ (optional for iOS)</label>
+          <input type="file" id="iosFile" accept=".usdz">
+          <button class="btn" type="submit" style="margin-top:12px;">Upload & Generate QR</button>
+        </form>
+        <div id="status" class="info" style="margin-top:8px;"></div>
+      </div>
+      <div class="panel">
+        <h3>Scan QR</h3>
+        <canvas id="qrCanvas" width="256" height="256"></canvas>
+        <div id="viewerLink" class="link"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const hostInput = document.getElementById('serverHost');
+    // Prefill with current hostname; if localhost, keep editable
+    hostInput.value = window.location.hostname || '';
+
+    async function uploadFile(file, field) {
+      const host = (hostInput.value || window.location.hostname).trim();
+      const path = field === 'ios' ? 'upload-ios' : 'upload';
+      const uploadUrl = `http://${host}:5501/${path}`;
+      const fd = new FormData();
+      fd.append(field, file);
+      const res = await fetch(uploadUrl, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Upload failed: ' + res.statusText);
+      const data = await res.json();
+      return data.url; // absolute URL
+    }
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const model = document.getElementById('modelFile').files[0];
+      const ios = document.getElementById('iosFile').files[0];
+      const status = document.getElementById('status');
+      const host = (hostInput.value || window.location.hostname).trim();
+      status.textContent = 'Uploading...';
+      try {
+        const modelUrl = await uploadFile(model, 'model');
+        let iosUrl = '';
+        if (ios) iosUrl = await uploadFile(ios, 'ios');
+        const viewer = new URL(`http://${host}:5500/ar/ar-viewer.html`);
+        const p = new URLSearchParams();
+        p.set('model', modelUrl);
+        if (iosUrl) p.set('ios', iosUrl);
+        viewer.search = p.toString();
+        document.getElementById('viewerLink').innerHTML = `<a href="${viewer.toString()}" target="_blank">${viewer.toString()}</a>`;
+        await QRCode.toCanvas(document.getElementById('qrCanvas'), viewer.toString(), { width: 256 });
+        status.textContent = 'Done. Scan QR with your phone.';
+      } catch (err) {
+        status.textContent = 'Error: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

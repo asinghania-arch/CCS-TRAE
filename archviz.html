@@ -1,258 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive ArchViz Demo | CoveCraft Studios</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        .archviz-container {
-            width: 100%;
-            height: 80vh;
-            background: #000;
-            border: 1px solid #333;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 2rem;
-        }
-
-        .game-placeholder {
-            text-align: center;
-            z-index: 2;
-        }
-
-        .upload-zone {
-            border: 2px dashed #444;
-            padding: 3rem;
-            border-radius: 4px;
-            margin-top: 1rem;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .upload-zone:hover {
-            border-color: #fff;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .loading-bar-container {
-            width: 300px;
-            height: 4px;
-            background: #222;
-            margin: 20px auto;
-            display: none;
-        }
-
-        .loading-bar {
-            width: 0%;
-            height: 100%;
-            background: #fff;
-            transition: width 0.1s linear;
-        }
-
-        .engine-logo {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            opacity: 0.8;
-        }
-        
-        .control-instructions {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-top: 2rem;
-            border-top: 1px solid #222;
-            padding-top: 1rem;
-        }
-        
-        .key-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #888;
-        }
-        
-        .key {
-            border: 1px solid #555;
-            padding: 4px 8px;
-            border-radius: 4px;
-            color: #fff;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Archviz</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body { background:#000; color:#fff; }
+    .page { max-width:1200px; margin:0 auto; padding:120px 20px 40px; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px; }
+    .card { border:1px solid rgba(255,255,255,0.2); background:#0b0b0b; position:relative; overflow:hidden; }
+    .card-header { padding:16px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between; }
+    .card-title { font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:0.02em; }
+    .card-body { padding:0; }
+    .thumb { width:100%; height:180px; background:#111; display:flex; align-items:center; justify-content:center; }
+    .thumb img { max-height:110px; opacity:0.85; filter:invert(1); }
+    .embed { width:100%; height:220px; border:0; display:block; }
+    .card-footer { padding:12px 16px; border-top:1px solid rgba(255,255,255,0.1); display:flex; gap:10px; align-items:center; }
+    .btn { background:white; color:black; padding:10px 16px; border:1px solid white; text-transform:uppercase; font-weight:700; letter-spacing:0.05em; cursor:pointer; }
+    .btn.secondary { background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.2); }
+    .note { color:#888; font-size:12px; }
+    .navbar { position:fixed; top:0; width:100%; padding:20px 50px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); border-bottom:1px solid rgba(255,255,255,0.2); z-index:1000; }
+    .logo-img { height:50px; width:auto; filter:invert(1); }
+    .nav-links { display:flex; gap:40px; list-style:none; }
+    .nav-links a { font-size:0.8rem; font-weight:500; color:#888; text-transform:uppercase; letter-spacing:0.1em; text-decoration:none; }
+    .nav-links a:hover { color:#fff; }
+  </style>
 </head>
 <body>
-    <div id="canvas-container"></div>
-    <div class="cursor-glow"></div>
-    
-    <nav class="navbar">
-        <div class="logo-container">
-            <a href="index.html">
-                <img src="logo.png" alt="CoveCraft Studios" class="logo-img">
-            </a>
-        </div>
-        <ul class="nav-links">
-            <li><a href="index.html">Home</a></li>
-            <li><a href="work.html">Work</a></li>
-            <li><a href="index.html#contact" class="btn-primary">Get in Touch</a></li>
-        </ul>
-        <div class="hamburger">
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
-    </nav>
-
-    <div class="container" style="padding-top: 120px;">
-        <h1 class="glitch-text" data-text="Interactive Walkthrough">Interactive Walkthrough</h1>
-        <p class="section-subtitle">Experience our spaces in real-time. Powered by Unreal Engine 5.</p>
-
-        <!-- The "Game" Container -->
-        <div class="archviz-container" id="gameContainer">
-            <div class="game-placeholder" id="placeholderContent">
-                <div class="engine-logo">⚡</div>
-                <h2>Launch Interactive Demo</h2>
-                <p>Click below to load the High-Fidelity 3D Environment</p>
-                <p class="text-muted" style="font-size: 0.9rem; margin-top: 0.5rem;">Requires WebGL 2.0 compatible browser</p>
-                
-                <button class="btn-primary" id="startDemoBtn" style="margin-top: 2rem;">START ENGINE</button>
-            </div>
-
-            <div class="game-placeholder" id="loadingContent" style="display: none;">
-                <div class="engine-logo" style="animation: pulse 2s infinite;">🔄</div>
-                <h3>Initializing Runtime...</h3>
-                <div class="loading-bar-container" style="display: block;">
-                    <div class="loading-bar" id="progressBar"></div>
-                </div>
-                <p id="loadingText" class="text-muted">Loading Assets...</p>
-            </div>
-            
-            <!-- This iframe would normally point to your HTML5 export index.html -->
-            <!-- <iframe src="path/to/unreal-export/index.html" style="width:100%; height:100%; border:none; display:none;" id="gameFrame"></iframe> -->
-        </div>
-
-        <div class="control-instructions">
-            <div class="key-item"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> Move</div>
-            <div class="key-item"><span class="key">MOUSE</span> Look Around</div>
-            <div class="key-item"><span class="key">SPACE</span> Jump</div>
-            <div class="key-item"><span class="key">ESC</span> Release Cursor</div>
-        </div>
-
-        <!-- Admin Upload Section Simulation -->
-        <div style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid #222;">
-            <h3>Admin Zone: Upload Build</h3>
-            <p class="text-muted">Upload your packed HTML5/WebGL project here to update the demo.</p>
-            <div class="upload-zone" onclick="alert('In a production environment, this would open a file picker to upload your .zip or .pck file.')">
-                <div style="font-size: 2rem; margin-bottom: 1rem;">📁</div>
-                <p>Drag & Drop Unreal Engine WebGL Build (.zip)</p>
-            </div>
-        </div>
+  <nav class="navbar">
+    <div class="logo-container">
+      <a href="index.html"><img src="logo.png" alt="CoveCraft Studios" class="logo-img"></a>
     </div>
-
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <p class="copyright">&copy; 2026 CoveCraft Studios. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="script.js"></script>
-    <script>
-        // Simulation Script for "Starting the Engine"
-        const startBtn = document.getElementById('startDemoBtn');
-        const placeholder = document.getElementById('placeholderContent');
-        const loader = document.getElementById('loadingContent');
-        const progressBar = document.getElementById('progressBar');
-        const loadingText = document.getElementById('loadingText');
-        const container = document.getElementById('gameContainer');
-
-        startBtn.addEventListener('click', () => {
-            placeholder.style.display = 'none';
-            loader.style.display = 'block';
-            
-            // Simulate loading process
-            let width = 0;
-            const interval = setInterval(() => {
-                if (width >= 100) {
-                    clearInterval(interval);
-                    finishLoading();
-                } else {
-                    width += Math.random() * 5; // Random loading speed
-                    if(width > 100) width = 100;
-                    progressBar.style.width = width + '%';
-                    
-                    if(width > 30 && width < 60) loadingText.textContent = "Compiling Shaders...";
-                    if(width > 60 && width < 90) loadingText.textContent = "Streaming Textures...";
-                    if(width > 90) loadingText.textContent = "Finalizing Scene...";
-                }
-            }, 100);
-        });
-
-        function finishLoading() {
-            loadingText.textContent = "Ready!";
-            setTimeout(() => {
-                loader.style.display = 'none';
-                // Here we would show the actual canvas/iframe
-                // For demo purposes, we'll create a simple Three.js scene inside the container to represent the "Game"
-                initGameDemo();
-            }, 500);
-        }
-
-        function initGameDemo() {
-            // Create a mini Three.js scene strictly for this container
-            const w = container.clientWidth;
-            const h = container.clientHeight;
-            
-            const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111111);
-            // Grid floor
-            const gridHelper = new THREE.GridHelper(100, 100, 0x444444, 0x222222);
-            scene.add(gridHelper);
-
-            const camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 1000);
-            camera.position.set(0, 5, 10);
-            camera.lookAt(0, 0, 0);
-
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(w, h);
-            container.appendChild(renderer.domElement);
-
-            // Add a rotating cube to represent the "Architecture"
-            const geometry = new THREE.BoxGeometry(4, 4, 4);
-            const material = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
-            const cube = new THREE.Mesh(geometry, material);
-            scene.add(cube);
-
-            // Animation loop
-            function animate() {
-                requestAnimationFrame(animate);
-                cube.rotation.x += 0.01;
-                cube.rotation.y += 0.01;
-                renderer.render(scene, camera);
-            }
-            animate();
-
-            // Add overlay message
-            const msg = document.createElement('div');
-            msg.style.position = 'absolute';
-            msg.style.top = '20px';
-            msg.style.left = '0';
-            msg.style.width = '100%';
-            msg.style.textAlign = 'center';
-            msg.style.color = '#fff';
-            msg.style.pointerEvents = 'none';
-            msg.innerHTML = "<h3>DEMO RUNNING</h3><p>This is where your Unreal Engine HTML5 Canvas would be.</p>";
-            container.appendChild(msg);
-        }
-    </script>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="work.html">Work</a></li>
+      <li><a href="archviz.html">Archviz</a></li>
+    </ul>
+  </nav>
+  <div class="page">
+    <h1 class="glitch-text" data-text="Interactive Archviz">Interactive Archviz</h1>
+    <p class="section-subtitle">Explore projects via Pixel Streaming</p>
+    <div id="projectsGrid" class="grid"></div>
+  </div>
+  <script>
+    const projects = [
+      {
+        title: 'The Trinity Project',
+        url: 'https://share.streampixel.io/695b6b737322a7e18b04ce26',
+        thumb: 'LOGO.png'
+      }
+    ];
+    const grid = document.getElementById('projectsGrid');
+    projects.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const header = document.createElement('div');
+      header.className = 'card-header';
+      const title = document.createElement('div');
+      title.className = 'card-title';
+      title.textContent = p.title;
+      const openBtn = document.createElement('a');
+      openBtn.className = 'btn secondary';
+      openBtn.href = p.url;
+      openBtn.target = '_blank';
+      openBtn.rel = 'noopener';
+      openBtn.textContent = 'Open';
+      header.appendChild(title);
+      header.appendChild(openBtn);
+      const body = document.createElement('div');
+      body.className = 'card-body';
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      const img = document.createElement('img');
+      img.src = p.thumb;
+      img.alt = 'Preview';
+      thumb.appendChild(img);
+      const iframe = document.createElement('iframe');
+      iframe.className = 'embed';
+      iframe.src = p.url;
+      iframe.title = 'Pixel Streaming';
+      iframe.loading = 'lazy';
+      body.appendChild(thumb);
+      body.appendChild(iframe);
+      const footer = document.createElement('div');
+      footer.className = 'card-footer';
+      const walkBtn = document.createElement('a');
+      walkBtn.className = 'btn';
+      walkBtn.href = p.url;
+      walkBtn.target = '_blank';
+      walkBtn.rel = 'noopener';
+      walkBtn.textContent = 'Walk Around';
+      const note = document.createElement('span');
+      note.className = 'note';
+      note.textContent = 'Opens in a new tab';
+      footer.appendChild(walkBtn);
+      footer.appendChild(note);
+      card.appendChild(header);
+      card.appendChild(body);
+      card.appendChild(footer);
+      grid.appendChild(card);
+    });
+  </script>
 </body>
 </html>
+

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Product Rendering | CoveCraft Studios</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+    
+    <style>
+        .viewer-section {
+            padding: 40px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .custom-viewer-container {
+            width: 100%;
+            height: 60vh;
+            min-height: 500px;
+            background: #111;
+            border: 1px solid var(--card-border);
+            position: relative;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .upload-controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            align-items: center;
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border: 1px solid var(--card-border);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            display: none;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border: 1px solid var(--card-border);
+            pointer-events: none;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        #dropZone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px dashed rgba(255,255,255,0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 5;
+            background: rgba(0,0,0,0.5);
+        }
+
+        #dropZone.dragover {
+            opacity: 1;
+            border-color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div class="cursor-glow"></div>
+    
+    <nav class="navbar">
+        <div class="logo-container">
+            <a href="index.html">
+                <img src="logo.png" alt="CoveCraft Studios" class="logo-img">
+            </a>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#about">About</a></li>
+            <li><a href="work.html">Work</a></li>
+            <li><a href="index.html#contact" class="btn-primary">Get in Touch</a></li>
+        </ul>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </nav>
+
+    <header class="hero" style="height: 40vh; min-height: 300px;">
+        <div class="hero-content" style="max-width: 800px; margin: 0 auto; text-align: center;">
+            <h1 class="glitch-text" data-text="Interactive 3D Viewer">Interactive 3D Viewer</h1>
+            <p class="hero-subtitle" style="margin: 0 auto;">Upload and inspect your GLB/GLTF models in real-time.</p>
+        </div>
+    </header>
+
+    <section class="viewer-section">
+        <div class="container">
+            
+            <div class="upload-controls">
+                <div class="file-input-wrapper">
+                    <button class="btn-primary">Upload Model (.glb/.gltf)</button>
+                    <input type="file" id="modelInput" accept=".glb,.gltf">
+                </div>
+                <div style="color: var(--text-muted);">
+                    <p>Supported formats: .glb, .gltf (embedded)</p>
+                    <p style="font-size: 0.8rem;">Max size: 50MB recommended</p>
+                </div>
+            </div>
+
+            <div class="custom-viewer-container" id="viewerContainer">
+                <div id="dropZone">
+                    <h2>Drop Model Here</h2>
+                </div>
+                
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <p>Loading Model...</p>
+                </div>
+
+                <div class="controls-info">
+                    <p><strong>Controls:</strong></p>
+                    <p>Left Click: Rotate</p>
+                    <p>Right Click: Pan</p>
+                    <p>Scroll: Zoom</p>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">CoveCraft Studios</div>
+                <p class="copyright">&copy; 2026 CoveCraft Studios. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        // Custom 3D Viewer Implementation
+        class ModelViewer {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.model = null;
+                this.mixer = null;
+                this.clock = new THREE.Clock();
+                this.reqId = null;
+
+                this.init();
+            }
+
+            init() {
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x111111);
+                
+                // Grid
+                const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+                this.scene.add(gridHelper);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(45, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
+                this.camera.position.set(5, 3, 5);
+
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.0;
+                this.container.appendChild(this.renderer.domElement);
+
+                // Controls
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+
+                // Lights
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                this.scene.add(ambientLight);
+
+                const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+                dirLight.position.set(5, 10, 7.5);
+                this.scene.add(dirLight);
+
+                const pointLight = new THREE.PointLight(0xffffff, 0.8);
+                pointLight.position.set(-5, 5, -5);
+                this.scene.add(pointLight);
+
+                // Responsive
+                window.addEventListener('resize', this.onWindowResize.bind(this));
+                
+                // Animation Loop
+                this.animate();
+
+                // Setup Loaders
+                this.gltfLoader = new THREE.GLTFLoader();
+                this.dracoLoader = null; // Can add DRACO support if needed
+            }
+
+            loadModel(url, fileName) {
+                const loadingOverlay = document.getElementById('loadingOverlay');
+                loadingOverlay.style.display = 'flex';
+
+                // Cleanup existing model
+                if (this.model) {
+                    this.scene.remove(this.model);
+                    this.model = null;
+                }
+
+                this.gltfLoader.load(
+                    url,
+                    (gltf) => {
+                        this.model = gltf.scene;
+                        
+                        // Center and Scale Model
+                        const box = new THREE.Box3().setFromObject(this.model);
+                        const center = box.getCenter(new THREE.Vector3());
+                        const size = box.getSize(new THREE.Vector3());
+                        
+                        const maxDim = Math.max(size.x, size.y, size.z);
+                        const scale = 5 / maxDim; // Scale to fit in 5 unit box
+                        
+                        this.model.scale.setScalar(scale);
+                        
+                        // Re-center after scaling
+                        box.setFromObject(this.model);
+                        box.getCenter(center);
+                        
+                        this.model.position.x -= center.x;
+                        this.model.position.y -= center.y;
+                        
+                        // Lift up so it sits on grid
+                        const minY = box.min.y - center.y; // approximate
+                        this.model.position.y -= (box.min.y * scale);
+
+                        this.scene.add(this.model);
+                        
+                        // Handle Animations
+                        if (gltf.animations && gltf.animations.length) {
+                            this.mixer = new THREE.AnimationMixer(this.model);
+                            gltf.animations.forEach((clip) => {
+                                this.mixer.clipAction(clip).play();
+                            });
+                        }
+
+                        loadingOverlay.style.display = 'none';
+                        console.log('Model loaded:', fileName);
+                    },
+                    (xhr) => {
+                        // Progress
+                        // console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                    },
+                    (error) => {
+                        console.error('An error happened', error);
+                        loadingOverlay.style.display = 'none';
+                        alert('Error loading model. Check console for details.');
+                    }
+                );
+            }
+
+            onWindowResize() {
+                if (!this.camera || !this.renderer) return;
+                this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            }
+
+            animate() {
+                this.reqId = requestAnimationFrame(this.animate.bind(this));
+                
+                const delta = this.clock.getDelta();
+                if (this.mixer) this.mixer.update(delta);
+                
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Initialize Viewer
+        const viewer = new ModelViewer('viewerContainer');
+
+        // File Input Handler
+        const fileInput = document.getElementById('modelInput');
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                viewer.loadModel(url, file.name);
+            }
+        });
+
+        // Drag and Drop Support
+        const dropZone = document.getElementById('viewerContainer');
+        const dropVisual = document.getElementById('dropZone');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropVisual.style.opacity = '1';
+        }
+
+        function unhighlight(e) {
+            dropVisual.style.opacity = '0';
+        }
+
+        dropZone.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.match(/\.(glb|gltf)$/i)) {
+                    const url = URL.createObjectURL(file);
+                    viewer.loadModel(url, file.name);
+                } else {
+                    alert('Please upload a .glb or .gltf file');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
